@@ -13,7 +13,7 @@ The platform evaluates your design across 10 criteria (responsibilities, couplin
 - 5 LLD problems: Parking Lot, Vending Machine, Elevator, Library Management, Movie Ticket Booking
 - 10-section structured text editor with draft saving
 - Deterministic validation before AI is called (rejects incomplete submissions early)
-- AI evaluation via OpenAI with per-criterion scores, evidence, concerns, and suggestions
+- AI evaluation via Google Gemini (free tier) with per-criterion scores, evidence, concerns, and suggestions
 - Explicit evaluation state machine: DRAFT → SUBMITTED → EVALUATING → COMPLETED / FAILED
 - Attempt history grouped by problem with score progression (e.g., 6.2 → 7.1 → 8.4)
 - Retry on evaluation failure (submission is always preserved)
@@ -26,7 +26,7 @@ The platform evaluates your design across 10 criteria (responsibilities, couplin
 **Frontend:** React 18, Vite, React Router 6, Axios  
 **Backend:** Node.js, Express.js, REST API  
 **Database:** MongoDB + Mongoose  
-**AI:** OpenAI API (GPT-4o-mini by default), abstracted behind `AIProvider`  
+**AI:** Google Gemini API (gemini-3.7-flash, free tier), abstracted behind `AIProvider`  
 **Testing:** Jest + Supertest (backend), Vitest + React Testing Library (frontend)
 
 ## Architecture
@@ -43,7 +43,7 @@ Evaluator (abstract)
    │      ↓
    │   AIProvider (abstract)
    │      ↓
-   │   OpenAIProvider → OpenAI API
+   │   GeminiProvider → Google Gemini API (free)
    ├── RuleBasedEvaluator
    └── DemoEvaluator
 ```
@@ -62,7 +62,7 @@ Every attempt preserves its own submission and evaluation. Retrying a problem cr
 
 - Node.js 18+
 - MongoDB running locally (or MongoDB Atlas URI)
-- OpenAI API key (or use `DEMO_MODE=true`)
+- Google Gemini API key — free at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (or use `DEMO_MODE=true`)
 
 ### 1. Clone and install
 
@@ -91,14 +91,15 @@ Edit `server/.env`:
 ```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/lld-practice
-OPENAI_API_KEY=sk-your-key-here
-OPENAI_MODEL=gpt-4o-mini
+AI_PROVIDER=gemini
+GEMINI_API_KEY=your-key-here
+GEMINI_MODEL=gemini-3.7-flash
 CLIENT_URL=http://localhost:5173
 NODE_ENV=development
 DEMO_MODE=false
 ```
 
-To run without an OpenAI key, set `DEMO_MODE=true`.
+To run without a Gemini key, set `DEMO_MODE=true`.
 
 ### 3. Seed the database
 
@@ -133,11 +134,14 @@ App runs on http://localhost:5173
 |---|---|---|
 | `PORT` | Backend server port | `5000` |
 | `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/lld-practice` |
-| `OPENAI_API_KEY` | OpenAI API key | — |
-| `OPENAI_MODEL` | Model to use | `gpt-4o-mini` |
+| `AI_PROVIDER` | AI provider to use: `gemini` or `openai` | `gemini` |
+| `GEMINI_API_KEY` | Google Gemini API key (free) — [get here](https://aistudio.google.com/app/apikey) | — |
+| `GEMINI_MODEL` | Gemini model to use | `gemini-3.7-flash` |
+| `OPENAI_API_KEY` | OpenAI API key (optional, if using openai provider) | — |
+| `OPENAI_MODEL` | OpenAI model (optional) | `gpt-4o-mini` |
 | `CLIENT_URL` | Frontend URL for CORS | `http://localhost:5173` |
 | `NODE_ENV` | Environment | `development` |
-| `DEMO_MODE` | Use mock evaluator (no API key needed) | `false` |
+| `DEMO_MODE` | Use mock evaluator — no AI key needed | `false` |
 
 ## Running Tests
 

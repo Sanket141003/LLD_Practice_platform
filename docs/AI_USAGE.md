@@ -7,16 +7,16 @@ This document covers 5 meaningful AI-assisted decisions made during the developm
 ## Decision 1 — Evaluator Abstraction Architecture
 
 **What AI suggested:**
-When asked about evaluation architecture, AI suggested creating an `Evaluator` interface with concrete implementations (`AIEvaluator`, `RuleBasedEvaluator`) and a separate `AIProvider` abstraction to decouple the evaluator from the OpenAI SDK.
+When asked about evaluation architecture, AI suggested creating an `Evaluator` interface with concrete implementations (`AIEvaluator`, `RuleBasedEvaluator`) and a separate `AIProvider` abstraction to decouple the evaluator from any specific AI SDK.
 
 **What I accepted:**
-The two-level abstraction: `Evaluator → AIEvaluator → AIProvider → OpenAIProvider`. This cleanly separates the evaluation domain logic from the infrastructure concern of which AI model to call.
+The two-level abstraction: `Evaluator → AIEvaluator → AIProvider → GeminiProvider`. This cleanly separates the evaluation domain logic from the infrastructure concern of which AI model to call.
 
 **What I rejected:**
 AI also suggested using an event-driven architecture with a message queue for evaluation jobs. Rejected for the MVP — the assignment explicitly warns against over-engineering into distributed systems. An in-process async call with a documented limitation is the right trade-off for a 2-day build.
 
 **Final implementation:**
-`EvaluatorFactory` selects the evaluator. `AIEvaluator` constructs the prompt and delegates to `AIProvider`. `OpenAIProvider` wraps the SDK. Swapping providers or evaluator types requires changes only to the factory and the new concrete class.
+`EvaluatorFactory` selects the evaluator. `AIEvaluator` constructs the prompt and delegates to `AIProvider`. `GeminiProvider` wraps the Google Gemini SDK. Swapping providers or evaluator types requires changes only to the factory and the new concrete class. The abstraction also allowed switching from OpenAI to Gemini (free tier) without touching any domain or service layer code.
 
 ---
 
@@ -58,20 +58,27 @@ The evaluation prompt explicitly instructs the AI: "Do NOT compare the learner a
 Send all submissions directly to the AI for evaluation, letting the AI decide if the submission is too thin.
 
 **What I rejected:**
-Delegating basic validation to the AI wastes API credits and introduces non-determinism into a simple check. An empty "Classes" section should be rejected immediately with a clear error message, not sent to OpenAI for a judgment.
+Delegating basic validation to the AI wastes API calls and introduces non-determinism into a simple check. An empty "Classes" section should be rejected immediately with a clear error message, not sent to Gemini for a judgment.
 
 **Final implementation:**
 `SubmissionService.finalizeSubmission()` runs `validateSubmissionContent()` before any AI call. Three sections are required (`requirementsUnderstanding`, `classes`, `responsibilities`) with a minimum word count. At least 5 of 10 sections must have content. Only submissions passing deterministic validation reach the AI.
 
 ---
 
-## Decision 5 — Demo Mode Design
+## Decision 5 — AI Provider Choice and Demo Mode Design
 
 **What AI suggested:**
-Use environment variables to conditionally mock the OpenAI SDK responses.
+Use OpenAI (paid) as the only AI provider and mock it via environment variables for demo mode.
 
-**What I accepted partially:**
-The idea of a demo mode. But mocking the SDK directly makes the code harder to test and reason about.
+**What I rejected:**
+OpenAI requires a paid API key which creates a barrier for reviewers. Mocking the SDK directly makes the code harder to test and reason about.
 
 **What I implemented instead:**
-A proper `DemoEvaluator` class that implements the `Evaluator` interface. When `DEMO_MODE=true`, `EvaluatorFactory` returns a `DemoEvaluator` that produces realistic, structured mock feedback without any API call. The demo banner in the UI clearly indicates the feedback is not real AI output. This approach respects the evaluator abstraction and makes the demo experience honest and obvious.
+Two separate decisions:
+
+1. **Gemini as the AI provider** — Google Gemini's free tier (`gemini-3.7-flash`) provides sufficient quality for LLD evaluation without requiring a paid account. The `AIProvider` abstraction means switching back to OpenAI or any other provider is a one-line change in `EvaluatorFactory`.
+
+2. **A proper `DemoEvaluator` class** — implements the `Evaluator` interface and returns realistic mock feedback without any API call. When `DEMO_MODE=true`, `EvaluatorFactory` returns a `DemoEvaluator`. The demo banner in the UI clearly indicates the feedback is not real AI output. This approach respects the evaluator abstraction and makes the demo experience honest and obvious.
+
+**Key insight from the AIProvider abstraction:**
+When we needed to switch from OpenAI to Gemini, zero domain code changed. Only `GeminiProvider` was added and `EvaluatorFactory` was updated. This validated the architecture decision upfront.

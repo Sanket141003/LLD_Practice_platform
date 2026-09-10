@@ -87,7 +87,8 @@ Evaluation
 | Evaluator (abstract) | Contract for any evaluator (AI, rule-based, human, demo). |
 | AIEvaluator | Constructs prompt, calls AIProvider, parses and validates AI response. |
 | AIProvider (abstract) | Contract for any AI model provider. |
-| OpenAIProvider | Implements AIProvider using the OpenAI SDK. |
+| GeminiProvider | Implements AIProvider using the Google Gemini SDK (free tier). |
+| OpenAIProvider | Implements AIProvider using the OpenAI SDK (optional, paid). |
 | DemoEvaluator | Returns deterministic mock feedback. Used when DEMO_MODE=true. |
 | EvaluatorFactory | Selects and constructs the appropriate evaluator. |
 
@@ -147,7 +148,7 @@ AIEvaluator.evaluate(submission, problem)
   ↓
 AIProvider.complete(systemPrompt, userPrompt)
   ↓
-OpenAIProvider → OpenAI API
+GeminiProvider → Google Gemini API (free tier, gemini-3.7-flash)
   ↓
 parse + validate JSON response
   ↓
